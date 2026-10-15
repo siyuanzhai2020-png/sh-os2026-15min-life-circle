@@ -1,10 +1,15 @@
-"""push 前最终闸门：扫描**暂存区内容**（即将写进 git 的字节）里有没有密钥。
+"""push 前最终闸门：扫描**即将进仓库的内容**里有没有密钥。
 
     python tools/check_no_secrets.py
 
-扫描对象是 `git show :<path>`（暂存区的 blob），不是工作区文件 ——
-只有暂存区里的东西才会进仓库。同时检查几个通用密钥特征（百度 AK/SK、私钥、token）。
-返回码非 0 表示发现疑似密钥，此时**不要 push**。
+扫描对象按优先级取：
+1. `git show :<path>` —— **暂存区**的 blob（有暂存内容时）。这是 push 前的正确目标：
+   只有暂存区里的东西才会被 commit。
+2. 暂存区为空时退回扫描 `HEAD` 的提交树 —— 这样它也能安全地放进 `verify` 链里跑
+   （提交之后暂存区本来就是空的，不能因此判失败）。
+
+同时检查通用密钥特征（百度 AK/SK、私钥、各类 token）。返回码非 0 表示发现疑似密钥，
+此时**不要 push**。
 """
 from __future__ import annotations
 
@@ -39,22 +44,33 @@ def staged_files():
     return [p.decode("utf-8") for p in out.split(b"\x00") if p]
 
 
-def blob(path: str) -> bytes:
-    r = subprocess.run(["git", "show", f":{path}"], cwd=ROOT, capture_output=True)
+def head_files():
+    out = subprocess.run(["git", "ls-tree", "-r", "--name-only", "-z", "HEAD"],
+                         cwd=ROOT, capture_output=True).stdout
+    return [p.decode("utf-8") for p in out.split(b"\x00") if p]
+
+
+def blob(path: str, rev: str = ":") -> bytes:
+    r = subprocess.run(["git", "show", f"{rev}{path}"], cwd=ROOT, capture_output=True)
     return r.stdout
 
 
 def main() -> int:
     files = staged_files()
+    rev, where = ":", "暂存区"
     if not files:
-        print("暂存区是空的（先 git add）")
-        return 1
-    print(f"扫描暂存区 {len(files)} 个文件…")
+        # 已提交（或仓库还没有提交）时退回提交树：verify 链在 commit 之后跑，暂存区是空的
+        files = head_files()
+        rev, where = "HEAD:", "HEAD 提交树"
+    if not files:
+        print("没有可扫描的内容（仓库还没有任何提交）—— 跳过")
+        return 0
+    print(f"扫描{where} {len(files)} 个文件…")
     hits = []
     for f in files:
         if f.endswith(SKIP_SUFFIX) or f in ALLOW:
             continue
-        data = blob(f)
+        data = blob(f, rev)
         for pat, label in PATTERNS:
             for m in pat.finditer(data):
                 s = m.group(0)
