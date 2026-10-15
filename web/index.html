@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>社区生活圈智能体检与规划助手</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>社区生活圈智能体检与规划助手</h1>
+    <div class="sub">15 分钟步行生活圈 · 可达性自主计算 · 体检—规划闭环</div>
+  </div>
+  <div class="controls">
+    <div class="ctl-row ctl-main">
+      <label>社区 <select id="community"></select></label>
+      <label>处方要素 <select id="element"></select></label>
+      <label class="range">新增设施 <input type="range" id="k" min="1" max="4" value="2">
+        <b id="kval">2</b> 处</label>
+      <button id="runOpt" class="primary">运行选址优化</button>
+      <span class="demo-ctl">
+        <button id="demoStart" class="demo-launch">▶ 一键演示</button>
+        <div id="demoMenu" class="demo-menu" hidden>
+          <button data-demo="quick"><b>快速版</b><span>约 2.5 分钟 · 12 个环节</span></button>
+          <button data-demo="full"><b>完整版</b><span>约 4 分钟 · 每环节停留更久，适合录制</span></button>
+          <div class="muted">聚光导览：蒙版 + 高亮框 + 指向卡。空格暂停 · ←→ 切换 · R 重播本步 · Esc 退出</div>
+        </div>
+      </span>
+    </div>
+    <div class="ctl-row ctl-sub">
+      <button id="addCommunity" class="ghost">＋ 自选社区</button>
+      <a id="reportLink" class="ghost" href="/api/report?community=caoyang-real" target="_blank">完整报告</a>
+      <a id="compareLink" class="ghost" href="/out/compare.html" target="_blank" title="同一套口径下的多社区横向对比">跨社区对比</a>
+      <a class="ghost" href="/diag.html" target="_blank" title="在出问题的那台浏览器上逐项探测网络 / 脚本 / BMapGL / AK">底图诊断</a>
+      <label class="ak"><input id="ak" placeholder="百度地图 Web 端 AK（可选）">
+        <button id="loadAk" class="ghost">加载底图</button></label>
+    </div>
+  </div>
+
+  <div id="addPanel" class="add-panel" hidden>
+    <div class="add-grid">
+      <label>① 搜索街道 / 地点 <input id="ncSearch" placeholder="如：曹杨新村街道、长风新村、打浦桥"></label>
+      <label>城市 <input id="ncCity" value="上海市"></label>
+      <span class="add-actions"><button id="ncSearchBtn" class="primary">搜索</button></span>
+      <label>社区名称（留空则用选中地点名）<input id="ncName" placeholder="自动取选中地点名"></label>
+      <label>分析半边长 <input id="ncHalf" type="number" value="800" min="300" max="3000" step="50"> 米</label>
+      <label>常住人口（可选）<input id="ncPop" type="number" placeholder="如 98000"></label>
+      <label>街道面积 km²（可选）<input id="ncArea" type="number" placeholder="如 2.14" step="0.01"></label>
+      <span class="add-actions">
+        <button id="ncSubmit" class="primary">② 开始分析</button>
+        <button id="ncCancel" class="ghost">取消</button>
+      </span>
+    </div>
+    <div id="ncResults" class="nc-results"></div>
+    <div id="ncPicked" class="nc-picked" hidden></div>
+    <div class="add-hint muted">
+      先模糊搜索（支持"XX街道 / XX新村 / XX路"这类不完整输入），从候选里选一个作为分析中心；
+      然后拉取真实数据（百度 POI + OpenStreetMap 步行路网与建筑），约 20–60 秒。
+      填了常住人口与面积就按人口密度对户数做总量校准（建议填七普街道数据）。
+      也可用 <code>python tools/add_community.py --name ... --address ...</code> 走命令行。
+    </div>
+    <div id="ncStatus" class="add-status muted"></div>
+  </div>
+</header>
+
+<main>
+  <section class="map-card">
+    <div class="tabs">
+      <button data-mode="canvas" class="on">体检底图（服务端静态图，不依赖浏览器加载百度脚本）</button>
+      <button data-mode="bmap">百度地图 JSAPI GL 底图（需 Web 端 AK）</button>
+      <span id="mapStatus" class="status"></span>
+    </div>
+    <div class="cover-switch">
+      <span class="muted">覆盖图层：</span>
+      <button id="coverBefore" class="on">现状</button>
+      <button id="coverAfter" disabled>优化后（含推荐点位）</button>
+      <span id="coverDelta" class="cover-delta muted"></span>
+    </div>
+    <div id="canvasWrap" class="map-stage"><canvas id="map"></canvas><div id="tooltip" hidden></div></div>
+    <div id="bmapWrap" class="map-stage" hidden></div>
+    <div class="layers">
+      <label><input type="checkbox" id="ly_basemap" checked> 百度底图（服务端静态图）</label>
+      <label><input type="checkbox" id="ly_cover" checked> 可达要素底图</label>
+      <label><input type="checkbox" id="ly_roads" checked> 路网</label>
+      <label><input type="checkbox" id="ly_footway"> 内部步道</label>
+      <label><input type="checkbox" id="ly_poi" checked> 设施</label>
+      <label><input type="checkbox" id="ly_resid" checked> 居住组团</label>
+      <label><input type="checkbox" id="ly_sites" checked> 推荐点位</label>
+      <span class="raster-switch">底图：
+        <button id="rsCover" class="mini on" title="色块 = 15 分钟内可达的必需要素数量">可达要素</button>
+        <button id="rsIso" class="mini" title="色块 = 从任一居住组团出发的步行时间分带（5/10/15 分钟）">步行等时圈</button>
+      </span>
+      <span class="zoomctl">
+        <button id="zoomOut" title="缩小">−</button>
+        <button id="zoomIn" title="放大">＋</button>
+        <button id="zoomReset" title="复位">复位</button>
+        <span class="hint">滚轮缩放 · 拖拽平移 · 双击放大</span>
+      </span>
+      <span class="hint" id="mapHint"></span>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="panel-modes">
+      <button data-pmode="checkup" class="on">① 智能体检<span>发现短板</span></button>
+      <button data-pmode="plan">② 规划助手<span>给出方案</span></button>
+    </div>
+
+    <div class="card score-card" data-pg="checkup">
+      <div class="score-num" id="scoreNum">—</div>
+      <div class="score-meta">
+        <div id="scoreGrade" class="grade">—</div>
+        <div class="muted" id="scoreMeta">加载中…</div>
+      </div>
+    </div>
+    <div class="card" data-pg="checkup"><h3>六维指标</h3><div id="dims"></div></div>
+
+    <div class="card" data-pg="checkup">
+      <h3>15 分钟圈（同心等时圈）<span class="h3-note" id="isoWho">点击地图上的居住组团后显示</span></h3>
+      <div id="isoBody" class="muted"></div>
+    </div>
+
+    <div class="card" data-pg="checkup"><h3>问题清单</h3><div id="problems" class="problems"></div></div>
+
+    <div class="card" data-pg="plan">
+      <h3>规划建议（处方）<span class="h3-note">按性价比排序</span></h3>
+      <div id="opt" class="muted">点「运行选址优化」生成建议。</div>
+    </div>
+
+    <div class="card" data-pg="plan">
+      <h3>典型住户的一天<span class="h3-note">先选择住户类别，再点击地图上的居住组团</span></h3>
+      <div id="personaBar" class="persona-bar"></div>
+      <div class="persona-who" id="personaWho"></div>
+      <div id="routeHead" hidden></div>
+      <div id="routeBody" class="muted"></div>
+    </div>
+
+    <details class="card fold" data-pg="checkup">
+      <summary>要素体检明细（12 项全表）</summary>
+      <div class="table-wrap"><table id="elemTable"></table></div>
+      <div class="muted fold-note">完整口径、标准依据与稳健性检验见「查看完整报告」。</div>
+    </details>
+
+    <details class="card fold" data-pg="checkup">
+      <summary>数据来源与方法</summary>
+      <div id="meta" class="muted"></div>
+    </details>
+  </aside>
+</main>
+
+<!-- 一键演示：顶部极简控制条 + 聚光蒙版 + 指向卡（全部文字都在指向卡里，不再单设字幕条） -->
+<div id="demoBar" class="demo-bar" hidden>
+  <span class="demo-dot" aria-hidden="true"></span>
+  <b id="demoStep">1 / 12</b>
+  <span class="demo-progress" aria-hidden="true"><i id="demoProg"></i></span>
+  <span class="demo-btns">
+    <button id="demoPause" title="空格：暂停 / 继续">⏸ 暂停</button>
+    <button id="demoNext" title="→：下一步">下一步</button>
+    <button id="demoExit" title="Esc：退出演示">✕</button>
+  </span>
+</div>
+
+<div id="demoSpot" class="demo-spot" hidden aria-hidden="true">
+  <!-- 一层 SVG 蒙版挖洞，而不是四块矩形拼接：见 style.css 里的说明。
+       同一份 mask 里可以挖任意多个洞（例如"高亮卡片 + 同时高亮地图"）。 -->
+  <svg class="demo-shade" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <mask id="demoHoles" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+        <rect x="0" y="0" width="100%" height="100%" fill="#fff"></rect>
+        <rect id="dh1" x="0" y="0" width="0" height="0" fill="#000"></rect>
+        <rect id="dh2" x="0" y="0" width="0" height="0" fill="#000"></rect>
+      </mask>
+    </defs>
+    <rect class="demo-veil" x="0" y="0" width="100%" height="100%"
+          mask="url(#demoHoles)"></rect>
+  </svg>
+  <div class="demo-ring" id="demoRing" hidden></div>
+  <div class="demo-ring soft" id="demoRing2" hidden></div>
+  <div class="demo-tag" id="demoTag" hidden></div>
+  <svg class="demo-arrow" id="demoArrow" hidden>
+    <polyline id="daLine" points=""></polyline>
+    <polygon id="daHead" points=""></polygon>
+  </svg>
+</div>
+<div id="demoCard" class="demo-card" hidden role="dialog" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

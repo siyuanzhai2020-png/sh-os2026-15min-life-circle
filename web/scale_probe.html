@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>百度真实分辨率实测</title>
+<style>
+body{font:14px/1.6 system-ui,"Microsoft YaHei";margin:16px}
+pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px}
+</style>
+</head>
+<body>
+<h1 style="font-size:18px">百度地图 JSAPI 真实分辨率实测</h1>
+<p>用 JSAPI 自己的 pointToPixel 量出 zoom 16 下「0.005° 经纬度差」对应多少像素，反推真实 m/像素。
+   本页由 headless 浏览器抓取 DOM 使用。</p>
+<div id="map" style="width:1024px;height:1024px"></div>
+<pre id="out">running…</pre>
+<script>
+const DEG = 0.005, SIZE = 1024;
+const ZOOM = parseFloat(new URLSearchParams(location.search).get('zoom') || '16');
+const lines = [];
+const say = (s) => { lines.push(s); document.getElementById('out').textContent = lines.join('\n'); };
+
+function wgs84ToGcj02(lon, lat) {
+  const PI = Math.PI, A = 6378245.0, EE = 0.00669342162296594323;
+  const out = !(lon > 73.66 && lon < 135.05 && lat > 3.86 && lat < 53.55);
+  if (out) return [lon, lat];
+  const tLat = (x, y) => {
+    let r = -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+    r += (20*Math.sin(6*x*PI) + 20*Math.sin(2*x*PI)) * 2/3;
+    r += (20*Math.sin(y*PI) + 40*Math.sin(y/3*PI)) * 2/3;
+    r += (160*Math.sin(y/12*PI) + 320*Math.sin(y*PI/30)) * 2/3;
+    return r;
+  };
+  const tLon = (x, y) => {
+    let r = 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+    r += (20*Math.sin(6*x*PI) + 20*Math.sin(2*x*PI)) * 2/3;
+    r += (20*Math.sin(x*PI) + 40*Math.sin(x/3*PI)) * 2/3;
+    r += (150*Math.sin(x/12*PI) + 300*Math.sin(x/30*PI)) * 2/3;
+    return r;
+  };
+  let dLat = tLat(lon - 105, lat - 35), dLon = tLon(lon - 105, lat - 35);
+  const radLat = lat / 180 * PI;
+  let magic = Math.sin(radLat); magic = 1 - EE * magic * magic;
+  const sq = Math.sqrt(magic);
+  dLat = (dLat * 180) / ((A * (1 - EE)) / (magic * sq) * PI);
+  dLon = (dLon * 180) / (A / sq * Math.cos(radLat) * PI);
+  return [lon + dLon, lat + dLat];
+}
+function wgs84ToBd09(lon, lat) {
+  const g = wgs84ToGcj02(lon, lat), X_PI = Math.PI * 3000 / 180;
+  const z = Math.sqrt(g[0]*g[0] + g[1]*g[1]) + 0.00002*Math.sin(g[1]*X_PI);
+  const t = Math.atan2(g[1], g[0]) + 0.000003*Math.cos(g[0]*X_PI);
+  return [z*Math.cos(t) + 0.0065, z*Math.sin(t) + 0.006];
+}
+
+async function main() {
+  const cfg = await fetch('/api/config').then(r => r.json());
+  const cfg2 = await fetch('/api/communities').then(r => r.json());
+  const active = cfg2.active;
+  const bundle = await fetch('/api/bundle?community=' + encodeURIComponent(active) + '&k=0').then(r => r.json());
+  const c = bundle.community.center;
+  const bd = wgs84ToBd09(c.lon, c.lat);
+  say('community=' + active + '  center_wgs84=' + JSON.stringify([c.lon, c.lat]));
+  say('center_bd09=' + JSON.stringify(bd.map(v => +v.toFixed(6))));
+
+  const ak = cfg.baidu_web_ak;
+  if (!ak) { say('NO_AK'); return; }
+  await new Promise((res, rej) => {
+    window.__ready = () => { window.BMapGL && window.BMapGL.Map ? res() : rej(new Error('BMapGL missing')); };
+    const s = document.createElement('script');
+    s.src = 'https://api.map.baidu.com/api?type=webgl&v=1.0&ak=' + encodeURIComponent(ak) + '&callback=__ready';
+    s.onerror = () => rej(new Error('script load failed'));
+    document.head.appendChild(s);
+    setTimeout(() => rej(new Error('timeout')), 15000);
+  }).catch(e => { say('LOAD_FAIL ' + e.message); });
+
+  if (!(window.BMapGL && window.BMapGL.Map)) { say('ABORT no BMapGL'); return; }
+  const map = new BMapGL.Map('map');
+  map.centerAndZoom(new BMapGL.Point(bd[0], bd[1]), ZOOM);
+  map.enableScrollWheelZoom(true);
+
+  await new Promise(r => setTimeout(r, 2500));   // 等瓦片与投影就绪
+
+  const P = (lon, lat) => new BMapGL.Point(lon, lat);
+  const p0 = map.pointToPixel(P(bd[0], bd[1]));
+  const pE = map.pointToPixel(P(bd[0] + DEG, bd[1]));
+  const pN = map.pointToPixel(P(bd[0], bd[1] + DEG));
+  const dx = pE.x - p0.x, dy = p0.y - pN.y;
+  const mPerDegLon = 111320 * Math.cos(bd[1] * Math.PI / 180);
+  const mPerDegLat = 111320;
+  const mppX = (DEG * mPerDegLon) / dx;
+  const mppY = (DEG * mPerDegLat) / dy;
+  const predicted = 156543.03392 * Math.cos(bd[1] * Math.PI / 180) / Math.pow(2, ZOOM);
+
+  // 权威口径：视口地理范围 ÷ 容器像素尺寸
+  let boundsInfo = null, mppBounds = null;
+  try {
+    const b = map.getBounds();
+    const ne = b.getNorthEast(), sw = b.getSouthWest();
+    const rect = document.getElementById('map').getBoundingClientRect();
+    const spanLonM = (ne.lng - sw.lng) * mPerDegLon;
+    const spanLatM = (ne.lat - sw.lat) * mPerDegLat;
+    mppBounds = { x: spanLonM / rect.width, y: spanLatM / rect.height };
+    boundsInfo = { ne: [ne.lng, ne.lat], sw: [sw.lng, sw.lat],
+                   rect: [rect.width, rect.height], zoom: map.getZoom() };
+  } catch (e) { boundsInfo = { error: e.message }; }
+
+  let distCheck = null;
+  try {
+    distCheck = { lat: map.getDistance(P(bd[0], bd[1]), P(bd[0], bd[1] + DEG)),
+                  lon: map.getDistance(P(bd[0], bd[1]), P(bd[0] + DEG, bd[1])) };
+  } catch (e) { distCheck = { error: e.message }; }
+
+  say('getZoom=' + (boundsInfo && boundsInfo.zoom));
+  say('bounds=' + JSON.stringify(boundsInfo));
+  say('getDistance 0.005° lat=' + (distCheck.lat || 0).toFixed(1)
+    + ' m, lon=' + (distCheck.lon || 0).toFixed(1) + ' m');
+  say('center_pixel=' + JSON.stringify([p0.x, p0.y]));
+  say('east_shift_px=' + dx.toFixed(2) + '  north_shift_px=' + dy.toFixed(2));
+  say('mpp_from_pointToPixel: x=' + mppX.toFixed(4) + ' y=' + mppY.toFixed(4));
+  say('mpp_from_bounds: ' + JSON.stringify(mppBounds));
+  say('predicted_mpp=' + predicted.toFixed(4));
+  say('DONE');
+  // 回传到服务端，避免依赖 headless 抓 DOM
+  try {
+    await fetch('/api/probe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        probe: 'baidu_scale', community: active, zoom: ZOOM, size: SIZE, deg: DEG,
+        center_bd09: bd, east_shift_px: dx, north_shift_px: dy,
+        measured_mpp_x: mppX, measured_mpp_y: mppY,
+        mpp_from_bounds: mppBounds, bounds: boundsInfo, get_distance: distCheck,
+        predicted_mpp: predicted, ratio_x: mppX / predicted, ratio_y: mppY / predicted,
+        ua: navigator.userAgent, at: new Date().toISOString(),
+      }),
+    });
+    say('POSTED');
+  } catch (e) { say('POST_FAIL ' + e.message); }
+}
+main().catch(e => say('ERROR ' + e.message));
+</script>
+</body></html>

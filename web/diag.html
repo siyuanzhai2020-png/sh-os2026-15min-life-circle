@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>百度底图加载诊断</title>
+<style>
+  body { margin:0; background:#f6f7f9; color:#1f2430;
+         font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+  header { background:linear-gradient(120deg,#10314f,#1f77b4); color:#fff; padding:18px 24px; }
+  header h1 { margin:0; font-size:19px; }
+  header .sub { opacity:.9; font-size:12px; }
+  main { max-width:960px; margin:18px auto; padding:0 18px 60px; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { border-bottom:1px solid #eef1f5; padding:7px 8px; text-align:left; vertical-align:top; }
+  th { background:#f2f5f9; }
+  .ok { color:#2ca02c; font-weight:600; }
+  .bad { color:#d62728; font-weight:600; }
+  .warn { color:#ff7f0e; font-weight:600; }
+  .muted { color:#6b7280; font-size:12px; }
+  button { border:0; border-radius:7px; padding:7px 14px; background:#1f77b4; color:#fff; cursor:pointer; }
+  pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px; overflow:auto; font-size:12px; }
+  code { background:#f2f5f9; padding:1px 5px; border-radius:4px; }
+  ol { padding-left:20px; } li { margin:4px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>百度底图加载诊断</h1>
+  <div class="sub">在<b>出问题的那台浏览器</b>里打开本页，它会依次探测网络、脚本、图片、AK 可用性，指出卡在哪一步。</div>
+</header>
+<main>
+  <div class="card">
+    <h2>1. 环境</h2>
+    <table id="env"></table>
+    <p class="muted">重点看：是否处于代理/VPN、是否有内容拦截插件（uBlock/AdGuard 常拦 api.map.baidu.com）、
+      浏览器是否开启了「仅 HTTPS」或严格跟踪保护。</p>
+  </div>
+
+  <div class="card">
+    <h2>2. 探测结果</h2>
+    <table id="tests"><thead><tr><th>步骤</th><th>结果</th><th>说明</th></tr></thead><tbody></tbody></table>
+    <p><button id="rerun">重新检测</button>
+       <button id="copy" style="background:#e9eef4;color:#16283a">复制诊断结果</button></p>
+    <p class="muted">诊断结论会在这里给出：<span id="verdict" class="warn">检测中…</span></p>
+  </div>
+
+  <div class="card">
+    <h2>3. 结果原文（复制给对方排查）</h2>
+    <pre id="dump">检测中…</pre>
+  </div>
+
+  <div class="card">
+    <h2>4. 常见的四种原因与对策</h2>
+    <p class="muted">先看第 2 节的 ⓪b 行：它决定你属于下面哪一类。</p>
+    <ol>
+      <li><b>整个外网都不通，只有本站正常</b>（⓪b 失败、⓪ 通过）：这是**浏览器 profile 的代理配置问题**，
+        不是网络本身的问题——因为 headless 浏览器（同一个 msedge.exe、全新 profile）能正常出网。
+        <ol>
+          <li>地址栏打开 <code>edge://net-internals/#proxy</code>，看 "Effective proxy settings"：
+            若显示 <code>127.0.0.1:18911</code> 之类的本地代理或某个 PAC 地址，就是它。</li>
+          <li><code>edge://settings/system</code> → 「打开计算机的代理设置」，关掉手动代理。</li>
+          <li>检查代理类扩展（SwitchyOmega / Proxy Switchy / Clash 配套插件）；本机注册表里就留着
+            <code>ProxyServer=127.0.0.1:18911</code> 的痕迹，代理工具没在跑时这些配置就是死路。</li>
+          <li>用无痕窗口重开本页（默认禁用扩展）；若通过，就是扩展在设代理。</li>
+          <li>修复前演示用「体检底图」模式：底图由服务端取好再发给浏览器，不依赖浏览器出网。</li>
+        </ol></li>
+      <li><b>只有 api.map.baidu.com 不通</b>（⓪b 通过、① 失败）：域名级拦截。
+        ① 无痕窗口对比；② 检查 <code>C:\Windows\System32\drivers\etc\hosts</code>；
+        ③ 暂停 uBlock/AdGuard/隐私盾类插件对该站的拦截。</li>
+      <li><b>AK 白名单/配额</b>（脚本能下载但 BMapGL 未就绪）：到百度控制台确认
+        AK 类型是「浏览器端」、白名单含当前来源（<code>http://127.0.0.1:8000</code> 或 <code>*</code>）。</li>
+      <li><b>都不是</b>：主界面的「体检底图」模式走服务端静态图，不依赖浏览器加载百度脚本，
+        一定可用——演示时用这个模式即可。</li>
+    </ol>
+  </div>
+</main>
+<script>
+const results = [];
+const AK = new URLSearchParams(location.search).get('ak') || window.__AK__ || '';
+const log = (step, status, detail) => { results.push({ step, status, detail }); };
+
+function renderEnv() {
+  const rows = [
+    ['页面来源', location.origin + location.pathname],
+    ['User-Agent', navigator.userAgent],
+    ['在线状态', navigator.onLine ? 'online' : 'offline'],
+    ['语言/时区', navigator.language + ' / ' + Intl.DateTimeFormat().resolvedOptions().timeZone],
+    ['硬件并发/内存', (navigator.hardwareConcurrency || '?') + ' / ' + (navigator.deviceMemory || '?') + ' GB'],
+    ['使用的 AK', (window.__AK__ || AK) ? '…' + String(window.__AK__ || AK).slice(-6) + '（来自 '
+      + (AK ? '?ak= 参数' : '/api/config') + '）' : '（未取到，后端可能未配置 BAIDU_WEB_AK）'],
+  ];
+  document.getElementById('env').innerHTML = rows.map(([k, v]) =>
+    `<tr><th style="width:150px">${k}</th>`
+    + `<td>${String(v).replace(/</g, '&lt;')}</td></tr>`).join('');
+}
+
+function addRow(step, ok, detail) {
+  const cls = ok === true ? 'ok' : ok === false ? 'bad' : 'warn';
+  const label = ok === true ? '通过' : ok === false ? '失败' : '未知';
+  const safe = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  document.querySelector('#tests tbody').insertAdjacentHTML('beforeend',
+    `<tr><td>${safe(step)}</td><td class="${cls}">${label}</td>`
+    + `<td class="muted">${safe(detail)}</td></tr>`);
+}
+
+function timedFetch(url, opts = {}) {
+  const t0 = performance.now();
+  return fetch(url, opts).then((r) => ({ ok: true, r, ms: Math.round(performance.now() - t0) }))
+    .catch((e) => ({ ok: false, err: e.message, ms: Math.round(performance.now() - t0) }));
+}
+
+function loadScript(url, timeoutMs = 12000) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    let done = false;
+    const finish = (ok, detail) => {
+      if (done) return;
+      done = true;
+      resolve({ ok, detail, ms: Math.round(performance.now() - t0) });
+    };
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = () => finish(true, 'script onload 触发');
+    s.onerror = () => finish(false, 'script onerror 触发（请求被拒绝/被拦截/HTTP 错误）');
+    setTimeout(() => finish(null, `超过 ${timeoutMs} ms 未回调（既没 onload 也没 onerror）`), timeoutMs);
+    document.head.appendChild(s);
+  });
+}
+
+function loadImage(url, timeoutMs = 12000) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    const img = new Image();
+    let done = false;
+    const finish = (ok, detail) => {
+      if (done) return;
+      done = true;
+      resolve({ ok, detail, ms: Math.round(performance.now() - t0) });
+    };
+    img.onload = () => finish(true, `图片解码成功 ${img.naturalWidth}×${img.naturalHeight}`);
+    img.onerror = () => finish(false, '图片加载失败（网络/拦截/AK 无权）');
+    setTimeout(() => finish(null, `超过 ${timeoutMs} ms 未返回`), timeoutMs);
+    img.src = url;
+  });
+}
+
+async function run() {
+  document.querySelector('#tests tbody').innerHTML = '';
+  results.length = 0;
+  renderEnv();
+
+  if (!AK) {
+    try {
+      const cfg = await fetch('/api/config').then((r) => r.json());
+      window.__AK__ = cfg.baidu_web_ak || '';
+      addRow('从 /api/config 获取浏览器端 AK', !!window.__AK__,
+        window.__AK__ ? '已取到（服务端配置）' : '后端未配置 BAIDU_WEB_AK，请用 ?ak=你的AK 重新打开本页');
+    } catch (e) { addRow('从 /api/config 获取浏览器端 AK', false, e.message); }
+  }
+  const ak = window.__AK__;
+  renderEnv();          // 取到 AK 后刷新环境表
+
+  // 步骤 0：本站自身（基线，必然应该通过）
+  const own = await timedFetch('/api/health', { cache: 'no-store' });
+  addRow('⓪ 本站 /api/health（基线）', own.ok,
+    own.ok ? `通过，${own.ms} ms` : `失败：${own.err} → 说明是本地服务/页面问题，不是外网问题`);
+  log('own-origin', own.ok, own.ok ? `${own.ms}ms` : own.err);
+
+  // 步骤 0b：另一个外网站点（区分"全网断"与"只封百度地图"）
+  const other = await timedFetch('https://www.baidu.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+  addRow('⓪b 其他外网站点 www.baidu.com（对照组）', other.ok,
+    other.ok ? `通过，${other.ms} ms → 外网正常，问题只针对 api.map.baidu.com`
+             : `失败：${other.err}（${other.ms} ms）→ 整个外网都不通（代理/VPN/防火墙/DNS）`);
+  log('other-origin', other.ok, other.ok ? `${other.ms}ms` : other.err);
+
+  // 步骤 1：DNS/网络层面是否可达（no-cors 只看请求能否完成）
+  const probe = await timedFetch(`https://api.map.baidu.com/api?type=webgl&v=1.0&ak=${ak}`,
+    { mode: 'no-cors', cache: 'no-store' });
+  addRow('① fetch 探测 api.map.baidu.com（no-cors）', probe.ok,
+    probe.ok ? `请求完成，${probe.ms} ms（说明网络/代理没有拦这个域名）`
+             : `请求被拒：${probe.err}（${probe.ms} ms）→ 网络、代理或扩展拦截`);
+  log('fetch-no-cors', probe.ok, probe.ok ? `${probe.ms}ms` : probe.err);
+
+  // 步骤 2：脚本能否真正加载
+  const script = await loadScript(`https://api.map.baidu.com/api?type=webgl&v=1.0&ak=${ak}&callback=__diagCb`);
+  window.__diagCb = () => { window.__diagCbFired = true; };
+  addRow('② 注入 script 标签加载 JSAPI', script.ok, `${script.detail}（${script.ms} ms）`);
+  log('script-tag', script.ok, script.detail);
+
+  // 步骤 3：脚本加载后 BMapGL 是否可用（区分"下载失败"与"AK 被拒"）
+  await new Promise((r) => setTimeout(r, 1500));
+  const hasGl = !!(window.BMapGL && window.BMapGL.Map);
+  addRow('③ window.BMapGL 是否就绪', hasGl,
+    hasGl ? '就绪，可直接渲染地图' : '未就绪：若第②步通过，多半是 AK 类型/白名单/配额问题');
+  log('bmapgl-ready', hasGl, String(hasGl));
+
+  // 步骤 4：静态图接口（服务端底图用的就是它，用来验证 AK 与出网）
+  const imgUrl = 'https://api.map.baidu.com/staticimage/v2'
+    + `?ak=${ak}&center=121.41682,31.24793&width=256&height=256&zoom=15`;
+  const img = await loadImage(imgUrl);
+  addRow('④ 静态图接口（浏览器直连）', img.ok, `${img.detail}（${img.ms} ms）`);
+  log('static-image', img.ok, img.detail);
+
+  // 结论
+  let verdict;
+  if (!own.ok) verdict = '本站接口都不通 —— 检查 Demo 服务是否还在运行。';
+  else if (!other.ok && !probe.ok) {
+    verdict = '整个外网都不通，而本站正常 —— 最可能是浏览器 profile 里配了一个不可用的代理'
+      + '（请求被瞬间拒绝，所以是 0 ms）。排查入口：① 地址栏打开 edge://net-internals/#proxy '
+      + '看 "Effective proxy settings"；② edge://settings/system → 打开计算机的代理设置；'
+      + '③ 检查 SwitchyOmega / Clash 等代理类扩展；④ 用无痕窗口对比（默认禁用扩展）。'
+      + '修复前演示请用「体检底图」模式，它走服务端取图，不需要浏览器出网。';
+  }
+  else if (other.ok && !probe.ok) {
+    verdict = '外网正常，唯独 api.map.baidu.com 被拦住 —— 这是域名级拦截：'
+      + '浏览器扩展（uBlock/AdGuard/隐私盾）、hosts 文件或安全软件。'
+      + '请用无痕窗口（禁用扩展）验证，并检查 hosts。';
+  }
+  else if (script.ok && !hasGl) verdict = '脚本能下载但 BMapGL 未就绪 —— 基本可判定是 AK 白名单/类型/配额问题。';
+  else if (probe.ok && !script.ok) verdict = '网络通但脚本被拒 —— 典型的内容拦截插件或企业策略，换无痕窗口验证。';
+  else if (hasGl) verdict = '本浏览器一切正常，JSAPI 可用。';
+  else verdict = '结果不明确，请把下面的原文复制出来。';
+  document.getElementById('verdict').textContent = verdict;
+  document.getElementById('dump').textContent = JSON.stringify({
+    time: new Date().toISOString(), url: location.href, ua: navigator.userAgent,
+    akSuffix: ak ? ak.slice(-6) : null, verdict, steps: results,
+  }, null, 1);
+}
+
+document.getElementById('rerun').addEventListener('click', run);
+document.getElementById('copy').addEventListener('click', async () => {
+  const text = document.getElementById('dump').textContent;
+  try { await navigator.clipboard.writeText(text); document.getElementById('copy').textContent = '已复制'; }
+  catch { document.getElementById('copy').textContent = '复制失败，请手动选择'; }
+  setTimeout(() => (document.getElementById('copy').textContent = '复制诊断结果'), 2000);
+});
+run();
+</script>
+</body>
+</html>
