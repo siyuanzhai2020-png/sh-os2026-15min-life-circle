@@ -1,0 +1,131 @@
+{
+  "note": "典型住户画像。规划助手不接大模型判人，而是用这张可核对、可复现的规则表把'一类人'的一天说清楚；界面上的滑杆可以把它调成'这个人'。open/close 为分钟制时刻（420 = 07:00），来自社区设施的常规开放时间，可在界面上覆盖。",
+  "walk_speed_note": "步速来源：成人 1.25 m/s 与体检口径一致；老年人 0.85 m/s、学龄儿童 1.30 m/s 为常规取值；行动不便 0.60 m/s 接近拄拐/助行器速度。步速会同时改变'15 分钟能走多远'，所以不同画像的生活圈大小天然不同。",
+  "personas": [
+    {
+      "key": "elder_active",
+      "name": "活力老人",
+      "emoji": "🧓",
+      "icon": "park",
+      "color": "#2ca02c",
+      "who": "60–79 岁、能自主步行、日常基本不出社区",
+      "story": "上午买菜，随后到公园活动、社区卫生服务站测量血压、药店取药；中午在社区食堂就餐，下午前往社区文化活动中心",
+      "walk_speed_mps": 0.85,
+      "start_clock": "09:00",
+      "return_home": true,
+      "max_leg_min": 12.0,
+      "chain": ["market", "park", "community_health", "pharmacy", "canteen", "culture_center"],
+      "optional_chain": ["fitness", "convenience"],
+      "stay_min": {"market": 25, "park": 50, "community_health": 20, "pharmacy": 10,
+                   "canteen": 45, "culture_center": 50, "fitness": 40, "convenience": 5},
+      "windows": {
+        "market": [[330, 720]],
+        "community_health": [[510, 690], [810, 990]],
+        "pharmacy": [[480, 1260]],
+        "canteen": [[630, 810]],
+        "culture_center": [[510, 1170]],
+        "park": [[300, 1260]],
+        "fitness": [[300, 1260]],
+        "convenience": [[420, 1380]]
+      },
+      "window_source": "菜市场早市 05:30–12:00；社区卫生服务站 08:30–11:30、13:30–16:30（午间停诊）；社区食堂助餐 10:30–13:30"
+    },
+    {
+      "key": "commuter",
+      "name": "双职工上班族",
+      "emoji": "💼",
+      "icon": "metro",
+      "color": "#1f77b4",
+      "who": "夫妻双职工、早出晚归、工作日白天不在社区",
+      "story": "07:20 出门，先送幼儿园再乘轨道交通通勤；可用时间窗极窄，幼儿园 8:30 截止入园构成刚性约束",
+      "walk_speed_mps": 1.30,
+      "start_clock": "07:20",
+      "return_home": false,
+      "max_leg_min": 12.0,
+      "chain": ["kindergarten", "metro"],
+      "optional_chain": ["bus_stop"],
+      "stay_min": {"kindergarten": 8, "metro": 0, "bus_stop": 0},
+      "windows": {
+        "kindergarten": [[435, 510], [960, 1050]],
+        "metro": [[330, 1410]],
+        "bus_stop": [[330, 1380]]
+      },
+      "window_source": "幼儿园入园 07:15–08:30（逾期不再接收）；轨道交通运营 05:30–23:30",
+      "note": "只走「早高峰出门链」：送娃 + 通勤，送到地铁站为止、不回家。买菜取快递属于晚归链，请用「带娃家庭」或「全要素」画像看。"
+    },
+    {
+      "key": "family_kids",
+      "name": "带娃家庭",
+      "emoji": "👨‍👩‍👧",
+      "icon": "kindergarten",
+      "color": "#ff7f0e",
+      "who": "有学龄前儿童、白天由老人或全职家长照看",
+      "story": "送园后买菜，携儿童至社区卫生服务站进行儿保或接种，再到公园活动约一小时",
+      "walk_speed_mps": 1.00,
+      "start_clock": "08:00",
+      "return_home": true,
+      "max_leg_min": 10.0,
+      "chain": ["kindergarten", "market", "community_health", "park"],
+      "optional_chain": ["pharmacy", "convenience"],
+      "stay_min": {"kindergarten": 8, "market": 20, "community_health": 30,
+                   "park": 60, "pharmacy": 10, "convenience": 5},
+      "windows": {
+        "kindergarten": [[435, 510], [960, 1050]],
+        "market": [[330, 720]],
+        "community_health": [[510, 690], [810, 990]],
+        "park": [[300, 1260]],
+        "pharmacy": [[480, 1260]],
+        "convenience": [[420, 1380]]
+      },
+      "window_source": "推婴儿车出行，步速按 1.00 m/s 计；偏好无障碍路径（当前版本未建模台阶与坡道）"
+    },
+    {
+      "key": "student",
+      "name": "中小学生（放学后）",
+      "emoji": "🎒",
+      "icon": "primary_school",
+      "color": "#9467bd",
+      "who": "小学在读、放学后独自或结伴在社区内活动",
+      "story": "放学后先到社区文化活动中心写作业或参加兴趣班，再到球场活动，返家途中购买文具与零食",
+      "walk_speed_mps": 1.30,
+      "start_clock": "16:00",
+      "return_home": true,
+      "max_leg_min": 15.0,
+      "chain": ["primary_school", "culture_center", "fitness", "convenience"],
+      "optional_chain": ["park"],
+      "stay_min": {"primary_school": 5, "culture_center": 60, "fitness": 40,
+                   "convenience": 5, "park": 40},
+      "windows": {
+        "primary_school": [[450, 495], [930, 1020]],
+        "culture_center": [[900, 1230]],
+        "fitness": [[300, 1290]],
+        "convenience": [[420, 1380]],
+        "park": [[300, 1260]]
+      },
+      "window_source": "小学放学 15:30–17:00；社区文化活动中心下午延时到 20:30"
+    },
+    {
+      "key": "limited_mobility",
+      "name": "行动不便者",
+      "emoji": "🦯",
+      "icon": "community_health",
+      "color": "#d62728",
+      "who": "高龄或术后康复期居民，单次出行需一并完成多项事务",
+      "story": "每日仅出行一次，将就诊、取药与午餐一并办理；可接受的单段步行不超过 5 分钟",
+      "walk_speed_mps": 0.60,
+      "start_clock": "10:00",
+      "return_home": true,
+      "max_leg_min": 5.0,
+      "chain": ["community_health", "pharmacy", "canteen"],
+      "optional_chain": ["convenience"],
+      "stay_min": {"community_health": 25, "pharmacy": 10, "canteen": 45, "convenience": 5},
+      "windows": {
+        "community_health": [[510, 690], [810, 990]],
+        "pharmacy": [[480, 1260]],
+        "canteen": [[630, 810]],
+        "convenience": [[420, 1380]]
+      },
+      "window_source": "按助行器速度 0.60 m/s 计：同样 15 分钟仅可达 540 m，而成人步速为 1125 m，可达范围显著收缩"
+    }
+  ]
+}

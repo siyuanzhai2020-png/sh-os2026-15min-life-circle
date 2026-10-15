@@ -1,0 +1,361 @@
+{
+  "version": "0.1.0",
+  "note": "要素清单与达标口径的唯一来源。改这里即可改变体检标准，不改引擎代码。",
+  "source_caveat": "source 字段给出条目出处线索，正式提交前必须逐条核对国标/导则原文并补页码，见 docs/metrics.md。",
+  "cutoffs": {
+    "circle_15min": {
+      "time_s": 900,
+      "label": "15 分钟生活圈",
+      "walk_m_approx": 1000
+    },
+    "circle_5min": {
+      "time_s": 300,
+      "label": "5 分钟生活圈",
+      "walk_m_approx": 300
+    }
+  },
+  "walk_speed_mps": 1.25,
+  "avg_household_size": 2.6,
+  "sitable_note": "sitable=false 表示该要素由市级/区级规划或市场决定，社区层面无法自行选址，选址优化器不会对其开处方。",
+  "service_pop_note": "service_pop_per_unit（每处设施服务人口）是工程假设值：国标与导则规定的是'应配置某设施'，未规定每处服务人口。该参数只用于供需均衡度这一相对模型，有实测服务能力时应替换；它不影响覆盖率/达标率/可达性等硬指标。",
+  "composite_weights": {
+    "coverage": 0.28,
+    "compliance": 0.26,
+    "supply_demand": 0.18,
+    "redundancy": 0.1,
+    "fairness": 0.1,
+    "proximity_5min": 0.08
+  },
+  "elements": [
+    {
+      "key": "market",
+      "name": "菜市场 / 生鲜菜场",
+      "category": "基础保障",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 15000,
+      "source": "GB 50180-2018 附表A 五分钟生活圈居住区配套设施（社区商业网点）",
+      "co_location": "independent",
+      "build_notes": {
+        "build_form": "依托既有沿街商业铺面或社区商业网点改造，优先一层、带独立卸货口；不宜设于二层及以上（老年居民携物上下楼不便）",
+        "space_hint": "工程建议：营业面积 500–1000 m²，含卸货位与垃圾分类暂存点",
+        "approval": "市场监管（食品经营许可）、消防备案；占用小区内部空间需业主共同决定",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五分钟生活圈居住区",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置（社区商业网点）",
+        "walk_distance_m": 300,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "本项目口径：五个分钟生活圈内的菜市场/生鲜菜场，按步行 15 分钟覆盖判定（更宽）",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "community_health",
+      "name": "社区卫生服务站",
+      "category": "基础保障",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 10000,
+      "source": "GB 50180-2018 附表A 五分钟生活圈居住区配套设施",
+      "co_location": "independent",
+      "build_notes": {
+        "build_form": "与社区卫生服务中心合署或利用既有公建配套首层，需独立出入口与无障碍坡道",
+        "space_hint": "工程建议：建筑面积 200–400 m²（诊室、治疗室、药房、候诊分区）",
+        "approval": "卫健部门设置审批、医疗废物转运协议；涉及放射性设备另需环评",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五～十分钟生活圈居住区",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置",
+        "walk_distance_m": 300,
+        "building_area": "每处 120–270 m²",
+        "people_per_unit": null,
+        "note": "建筑面积口径来自青岛市控规文件转引 GB 50180-2018 与 TD/T 1062-2021",
+        "source_url": "http://www.qingdao.gov.cn/zwgk/xxgk/zygh/gkml/gwfg/xzgw/202504/P020250425407414542328.pdf",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "canteen",
+      "name": "社区食堂 / 老年助餐点",
+      "category": "基础保障",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 12000,
+      "source": "上海《15 分钟社区生活圈行动》社区食堂/助餐点要求（原文待核）",
+      "co_location": "compatible",
+      "build_notes": {
+        "build_form": "与社区文化活动中心、党群服务中心或养老设施合署，共用厨房与就餐区",
+        "space_hint": "工程建议：就餐区 150–300 m²，另计厨房与备餐间",
+        "approval": "食品经营许可、消防；若面向老年人助餐还需民政备案",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五～十五分钟生活圈居住区（上海：社区食堂/老年助餐点）",
+        "doc": "上海市《15 分钟社区生活圈行动·社区生活圈规划导则》（沪住建委）",
+        "requirement": "上海导则鼓励设置社区食堂与助餐点",
+        "walk_distance_m": 500,
+        "building_area": "社区综合为老服务中心一般不小于 1000 m²（含助餐功能）",
+        "people_per_unit": null,
+        "note": "社区食堂/助餐点属上海地方口径，国标未单列该条目；面积口径来自区级文件",
+        "source_url": "https://www.jingan.gov.cn/main/3d6e0059-ee66-43ab-a007-37521ce67285/90a91934-0b16-42c8-9c09-c22ab478f30f/决策草案及说明.pdf",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "pharmacy",
+      "name": "药店",
+      "category": "便利服务",
+      "required": true,
+      "sitable": false,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 6000,
+      "source": "GB 50180-2018 附表A（社区商业网点）",
+      "co_location": "compatible",
+      "standard_ref": {
+        "level": "五分钟生活圈居住区",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置（社区商业网点）",
+        "walk_distance_m": 300,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "药店属社区商业网点类，国标按「应配置」处理，未规定单体面积",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "kindergarten",
+      "name": "幼儿园（幼托）",
+      "category": "基础保障",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 9000,
+      "source": "GB 50180-2018 附表A 五分钟生活圈居住区配套设施",
+      "co_location": "independent",
+      "build_notes": {
+        "build_form": "独立用地或小区配套园，须有独立出入口、室外活动场地，不得与商业混层",
+        "space_hint": "工程建议：按班级数定规模，室外活动场地人均不低于 2 m²（以教育部门规定为准）",
+        "approval": "教育部门办学许可、消防与抗震专项审查",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五分钟生活圈居住区",
+        "doc": "《幼儿园建设标准》建标 175-2016（配套 GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定）",
+        "requirement": "应配置",
+        "walk_distance_m": 300,
+        "building_area": "3 班（服务 3000 人）796–1009 m²；6 班（3001–6000 人）2193–2665 m²",
+        "people_per_unit": "3 班园约 3000 人 / 6 班园约 6000 人",
+        "note": "面积与班数口径来自《幼儿园建设标准》",
+        "source_url": "http://www.yuxi.gov.cn/u/cms/yxszfxxgk/202412/19094828h9va.pdf",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "primary_school",
+      "name": "小学",
+      "category": "基础保障",
+      "required": true,
+      "sitable": false,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 14000,
+      "source": "GB 50180-2018 附表A 十分钟/十五分钟生活圈居住区配套设施",
+      "co_location": "independent",
+      "standard_ref": {
+        "level": "十分钟生活圈居住区",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置",
+        "walk_distance_m": 500,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "小学由区级教育部门统筹布点，社区层面无法自行选址（本项目 sitable=false 的依据）",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "culture_center",
+      "name": "社区文化活动中心",
+      "category": "品质提升",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 20000,
+      "source": "GB 50180-2018 附表A 十五分钟生活圈居住区配套设施",
+      "co_location": "independent",
+      "build_notes": {
+        "build_form": "优先与既有公共建筑（党群服务中心、文化馆分馆、学校体育馆）合署分时开放，社区层面单独新建成本较高",
+        "space_hint": "工程建议：多功能活动室 + 阅览 + 排练，合计 300–800 m²，宜设在一至三层",
+        "approval": "文旅/街道备案；若利用学校场地需教育部门同意并做开放时段隔离",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "十五分钟生活圈居住区（街道级）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定；上海市《15 分钟社区生活圈行动·社区生活圈规划导则》（沪住建委）",
+        "requirement": "应配置",
+        "walk_distance_m": 900,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "本项目按 15 分钟步行覆盖判定；上海导则强调一站式综合服务中心、功能复合",
+        "source_url": "https://zjw.sh.gov.cn/cmsres/46/46a920ce8f904888a1535f7d40a7be5f/b7f3c903e57f0d13d0fc99a4400c033f.pdf",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "fitness",
+      "name": "健身点 / 步道 / 球场",
+      "category": "品质提升",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 8000,
+      "source": "GB 50180-2018 附表A 五分钟生活圈居住区配套设施（室外综合健身场地）",
+      "co_location": "compatible",
+      "build_notes": {
+        "build_form": "利用小区内部空地、屋顶或桥下空间设置健身点与步道，建设成本低、实施周期短",
+        "space_hint": "工程建议：健身点 100–200 m²，步道宽度不低于 1.5 m",
+        "approval": "属地街道备案；占用绿地或消防通道需专项审批",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五分钟生活圈居住区（室外综合健身场地）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置",
+        "walk_distance_m": 300,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "本项目把健身点/步道/球场合并为一类，按 15 分钟覆盖判定（更宽）",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "park",
+      "name": "公园绿地 / 口袋公园",
+      "category": "品质提升",
+      "required": true,
+      "sitable": true,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 15000,
+      "source": "GB 50180-2018 附表A 十五分钟生活圈居住区配套设施（公共绿地）",
+      "co_location": "compatible",
+      "build_notes": {
+        "build_form": "口袋公园或街角绿地改造，或与河道蓝线、单位附属绿地开放共享结合",
+        "space_hint": "工程建议：300–1000 m²，含遮荫、座椅与夜间照明",
+        "approval": "绿化部门审批（占用绿地须占补平衡）",
+        "caveat": "以上为建设形态的工程建议，不是标准强制条款；面积与审批要求以规划、住建与行业主管部门的现行规定为准，正式报批前须逐条核对原文。"
+      },
+      "standard_ref": {
+        "level": "五分钟 / 十五分钟生活圈居住区（公共绿地）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定；上海市《15 分钟社区生活圈行动·社区生活圈规划导则》（沪住建委）",
+        "requirement": "应配置",
+        "walk_distance_m": 500,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "上海口径常表述为「300 m 见绿、500 m 见园」，本项目按 15 分钟步行覆盖判定",
+        "source_url": "https://zjw.sh.gov.cn/cmsres/46/46a920ce8f904888a1535f7d40a7be5f/b7f3c903e57f0d13d0fc99a4400c033f.pdf",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "bus_stop",
+      "name": "公交站点",
+      "category": "基础保障",
+      "required": true,
+      "sitable": false,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 5000,
+      "source": "GB 50180-2018 附表A 五分钟生活圈居住区配套设施（公共交通车站）",
+      "co_location": "compatible",
+      "standard_ref": {
+        "level": "五分钟生活圈居住区（公共交通车站）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置",
+        "walk_distance_m": 300,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "公交站点由公交企业/交通部门布设，社区无法自行选址（sitable=false）",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "metro",
+      "name": "轨道交通站点",
+      "category": "品质提升",
+      "required": true,
+      "sitable": false,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 30000,
+      "source": "GB 50180-2018 附表A 十五分钟生活圈居住区配套设施（公共交通车站）",
+      "co_location": "compatible",
+      "standard_ref": {
+        "level": "十五分钟生活圈居住区（公共交通车站）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定",
+        "requirement": "应配置",
+        "walk_distance_m": 900,
+        "building_area": null,
+        "people_per_unit": null,
+        "note": "轨道交通站点由市级规划决定，本项目只体检不处方（sitable=false）",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "source_url": "https://gf.cabr-fire.com/article-28028.htm",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    },
+    {
+      "key": "convenience",
+      "name": "便利店",
+      "category": "便利服务",
+      "required": false,
+      "min_count_15min": 1,
+      "service_pop_per_unit": 4000,
+      "source": "GB 50180-2018 附表A（社区商业网点，非强制项）",
+      "co_location": "compatible",
+      "standard_ref": {
+        "level": "五分钟生活圈居住区（社区商业网点）",
+        "doc": "GB 50180-2018《城市居住区规划设计标准》附录B 居住区配套设施设置规定；上海区级任务清单",
+        "requirement": "宜配置",
+        "walk_distance_m": 300,
+        "building_area": "生活服务中心类一般规模约 100 m²/处",
+        "people_per_unit": "约 0.5 万人设一处",
+        "note": "非必需要素：本项目计入体检展示但不计入达标要求",
+        "source_url": "https://www.shcm.gov.cn/shcm/c1186da3-53a0-49df-9859-2fa4d1ec5395/",
+        "walk_basis": "GB 50180-2018 表 3.0.4 居住区分级控制规模：步行距离 五分钟 300 m / 十分钟 500 m / 十五分钟 800–1000 m",
+        "verified": false,
+        "check_note": "出处来自公开检索（见 source_url），正式提交前须逐条核对标准原文并补页码"
+      }
+    }
+  ],
+  "co_location_note": "independent=需要独立空间（新增点位与同类既有设施保持 ≥250 m，避免重复布点）；compatible=可合署（同一栋楼/沿街可共用，≥60 m 即可）。依据：便民设施常与既有服务设施合署。"
+}

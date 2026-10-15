@@ -1,0 +1,137 @@
+{
+  "version": "0.1.0",
+  "active": "caoyang-real",
+  "communities": [
+    {
+      "id": "caoyang-real",
+      "name": "曹杨新村街道（真实数据）",
+      "district": "上海市普陀区",
+      "center": {
+        "lon": 121.405654,
+        "lat": 31.243749
+      },
+      "center_note": "坐标为 WGS-84（OSM/数据集统一使用 WGS-84）；原始定位来自百度地理编码 BD-09 (121.41682, 31.24793)，已用 crs.bd09_to_wgs84 换算。",
+      "extent_m": {
+        "half_width": 800,
+        "half_height": 800
+      },
+      "provider": "baidu",
+      "dataset": "data/caoyang-real.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "population_calibration": {
+        "density_per_km2": 45919,
+        "basis": "七普常住人口 98,267 人 ÷ 街道面积 2.14 km² = 45,919 人/km²，再乘分析范围 2.56 km²",
+        "sources": [
+          "citypopulation.de 街道级人口普查数据：曹杨新村街道 2020-11-01 常住人口 98,267 人",
+          "tcmap.com.cn 街道概况：面积约 2.14 km²，下辖 20 个社区，约 3.2 万余户"
+        ],
+        "caveat": "分析范围是 1.6×1.6 km 的方框，包含街道边界以外的部分区域；总量按街道人口密度推算，属近似值。若拿到居委/街道实测户数，放 data/households/caoyang-real.csv 即可覆盖（实测优先，自动跳过总量校准）。"
+      },
+      "data_disclaimer": "POI 与住宅区来自百度地图开放平台（地点检索），步行路网来自 OpenStreetMap；居住组团户数按 OSM 建筑轮廓×层数估算，总量按七普街道人口密度校准。仅用于赛题演示。"
+    },
+    {
+      "id": "caoyang-demo",
+      "name": "曹杨示范社区（离线合成数据集）",
+      "district": "上海市普陀区（参考位置）",
+      "center": {
+        "lon": 121.44,
+        "lat": 31.24
+      },
+      "extent_m": {
+        "half_width": 800,
+        "half_height": 800
+      },
+      "provider": "synthetic",
+      "dataset": "data/caoyang-demo.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "data_disclaimer": "本数据集由 providers/synthetic.py 确定性生成，路网结构与设施分布为演示用虚构数据，不代表真实小区状况；用于无网络/无 AK 环境下的完整功能演示与回归测试。"
+    },
+    {
+      "id": "custom-078ed4",
+      "name": "长风新村街道（真实数据）",
+      "district": "上海市普陀区",
+      "center": {
+        "lon": 121.406181,
+        "lat": 31.231864
+      },
+      "center_note": "WGS-84；来源=baidu_geocoding（置信度 70，政府机构）；长沙路3671弄长风新村街道办事处",
+      "extent_m": {
+        "half_width": 900,
+        "half_height": 900
+      },
+      "provider": "baidu",
+      "dataset": "data/custom-078ed4.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "data_disclaimer": "自选社区：POI 来自百度地图开放平台，步行路网与建筑来自 OpenStreetMap；户数为估算/校准值，仅用于赛题演示。",
+      "population_calibration": {
+        "density_per_km2": 20848,
+        "basis": "七普常住人口 120,920 人 ÷ 街道面积 5.8 km² = 20,848 人/km²，再乘分析范围 3.24 km²",
+        "sources": [
+          "citypopulation.de 街道级人口普查数据：长风新村街道 2020-11-01 常住人口 120,920 人",
+          "tcmap.com.cn 街道概况：辖区面积约 5.8 km²，下辖 28 个社区"
+        ],
+        "caveat": "分析范围是 1.8×1.8 km 的方框，包含行政边界以外的区域；总量按街道人口密度推算，属近似值。"
+      }
+    },
+    {
+      "id": "custom-590cc5",
+      "name": "北新泾街道",
+      "district": "",
+      "center": {
+        "lon": 121.369944,
+        "lat": 31.220632
+      },
+      "center_note": "WGS-84；来源=user",
+      "extent_m": {
+        "half_width": 800,
+        "half_height": 800
+      },
+      "provider": "baidu",
+      "dataset": "data/custom-590cc5.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "data_disclaimer": "自选社区：POI 来自百度地图开放平台，步行路网与建筑来自 OpenStreetMap；户数为估算/校准值，仅用于赛题演示。"
+    },
+    {
+      "id": "custom-ca018d",
+      "name": "程家桥街道",
+      "district": "",
+      "center": {
+        "lon": 121.363906,
+        "lat": 31.196621
+      },
+      "center_note": "WGS-84；来源=user",
+      "extent_m": {
+        "half_width": 800,
+        "half_height": 800
+      },
+      "provider": "baidu",
+      "dataset": "data/custom-ca018d.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "data_disclaimer": "自选社区：POI 来自百度地图开放平台，步行路网与建筑来自 OpenStreetMap；户数为估算/校准值，仅用于赛题演示。"
+    },
+    {
+      "id": "custom-2af78a",
+      "name": "大场镇",
+      "district": "",
+      "center": {
+        "lon": 121.412326,
+        "lat": 31.288743
+      },
+      "center_note": "WGS-84；来源=user",
+      "extent_m": {
+        "half_width": 800,
+        "half_height": 800
+      },
+      "provider": "baidu",
+      "dataset": "data/custom-2af78a.dataset.json",
+      "elements_config": "config/elements.json",
+      "cutoff_element": "circle_15min",
+      "data_disclaimer": "自选社区：POI 来自百度地图开放平台，步行路网与建筑来自 OpenStreetMap；户数为估算/校准值，仅用于赛题演示。"
+    }
+  ]
+}
