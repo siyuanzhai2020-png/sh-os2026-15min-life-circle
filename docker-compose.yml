@@ -1,0 +1,15 @@
+# 一键启动 Demo（含报告预生成）。
+# 说明：本机当前没有 Docker，未在容器内验证过；在评委/服务器环境请先跑一次 docker compose up 确认。
+services:
+  demo:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # 有真实 AK 时再填；不填则使用内置合成数据集，功能完整可演示
+      BAIDU_WEB_AK: "${BAIDU_WEB_AK:-}"
+      BAIDU_SERVER_AK: "${BAIDU_SERVER_AK:-}"
+      BAIDU_SK: "${BAIDU_SK:-}"
+    volumes:
+      - ./out:/app/out
+      - ./data:/app/data

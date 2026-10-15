@@ -1,0 +1,19 @@
+# 统一用 LF；但下面两个 Windows 脚本必须保持原样，见每条的理由
+* text=auto eol=lf
+
+# tasks.ps1 必须带 UTF-8 BOM：Windows PowerShell 5.1 不带 BOM 时按 GBK 解析，
+# 中文注释会让它报 `Unexpected token '{'`。当成二进制处理，git 就不会动它的字节。
+tasks.ps1 -text
+
+# .cmd 必须纯 ASCII + CRLF：cmd.exe 按控制台 ANSI 码页读批处理，
+# UTF-8 中文会被拆成乱码并当成命令执行。同样按二进制处理。
+*.cmd -text
+*.bat -text
+
+# 图片与压缩包不做行尾转换
+*.png binary
+*.jpg binary
+*.zip binary
+
+# 让 GitHub 统计语言占比时把 HTML/CSS 排除在"文档"之外
+*.md linguist-documentation

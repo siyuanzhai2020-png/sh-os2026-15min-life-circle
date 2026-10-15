@@ -1,0 +1,11 @@
+# 这里放"实测户数"（可信度最高的一级）。
+
+文件名必须是 `<社区id>.csv`，表头：name,households[,lon,lat]
+例：data/households/caoyang-real.csv
+
+  组团名,户数
+  曹杨一村,1204
+  梅花园,653
+
+有 lon/lat 时按坐标就近匹配，没有则按名称模糊匹配（见 lifecycle_metrics/pipeline.py）。
+命中后会自动跳过"普查总量校准"，因为实测口径优先于估算。

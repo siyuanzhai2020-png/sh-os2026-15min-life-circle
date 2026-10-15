@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lifecycle-metrics"
+version = "0.1.0"
+description = "社区生活圈体检指标引擎：步行可达性自算 + 六维指标 + 选址优化（可独立复用的 Python 包）"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+dependencies = ["requests>=2.31"]
+
+[project.optional-dependencies]
+# 交互式 Demo
+web = ["fastapi>=0.110", "uvicorn>=0.27"]
+# 报告出图
+report = ["pillow>=10.0", "shapely>=2.0"]
+# 真实数据源
+osm = ["osmnx>=1.9"]
+
+[tool.setuptools]
+packages = ["lifecycle_metrics", "lifecycle_metrics.providers"]

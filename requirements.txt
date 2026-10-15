@@ -1,0 +1,10 @@
+# 运行 Demo 与引擎只需要这些（本机已安装）
+fastapi>=0.110
+uvicorn>=0.27
+requests>=2.31
+pillow>=10.0
+shapely>=2.0           # 仅用于生活圈范围并成多边形（缺省时自动降级）
+
+# 可选：接入真实数据源时才需要
+# osmnx>=1.9           # 若想用 osmnx 做路网拓扑修复与简化
+# geopandas>=0.14      # 若想把结果导出为 GeoJSON/Shapefile 做进一步分析
