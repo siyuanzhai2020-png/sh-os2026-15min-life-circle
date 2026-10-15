@@ -70,8 +70,12 @@ switch ($Target) {
     $fail = 0
     # 自检另起一个端口，绝不动你可能正在用的 8000（一次疏忽就会把演示服务杀掉）
     $vp = if ($Port -eq 8000) { 8123 } else { $Port }
-    Write-Host "== [1/5] 代码规范自检 ==" -ForegroundColor Cyan
+    Write-Host "== [1/5] 规范 / 文档内链 / 密钥 自检 ==" -ForegroundColor Cyan
     python tools\lint_style.py
+    if ($LASTEXITCODE -ne 0) { $fail = 1 }
+    python tools\check_doc_links.py
+    if ($LASTEXITCODE -ne 0) { $fail = 1 }
+    python tools\check_no_secrets.py
     if ($LASTEXITCODE -ne 0) { $fail = 1 }
 
     Write-Host "`n== [2/5] 引擎单元测试 ==" -ForegroundColor Cyan
