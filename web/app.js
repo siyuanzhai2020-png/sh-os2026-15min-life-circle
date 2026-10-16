@@ -2426,6 +2426,9 @@ function demoBarH() {
 /** 指向卡正文（也用于估算停留时长）：run() 放动作，caption() 放话术。 */
 function demoSetCard(step, i, bodyHTML, opts = {}) {
   const c = $('demoCard');
+  // 兜底：演示已经停了（Esc / 播放结束）之后，任何迟到的渲染都不许再把卡片弄回来。
+  // 逐步重放里 await 是有可能跨越"用户按下退出"这个时间点的。
+  if (!demo.on) { demoShow(c, false); return c; }
   const hint = opts.hint || step.hint || '';
   c.innerHTML =
     `<div class="dc-head"><span class="dc-step">第 ${i + 1} 步 / 共 ${DEMO_STEPS.length} 步</span>`
@@ -2475,21 +2478,20 @@ function demoPending(text) {
 const demoShow = (el, on) => { if (el) el.toggleAttribute('hidden', !on); };
 
 function demoHideSpot() {
+  // 六个图层一个都不能漏：漏掉任何一个，它都会在"演示结束 / 中途退出"之后留在屏幕上。
+  // 踩过：漏了 demoCard —— 退出后那张指向卡一直挂着不消失（用户实拍）。
   demoShow($('demoSpot'), false);
   demoShow($('demoRing'), false);
   demoShow($('demoRing2'), false);
   demoShow($('demoTag'), false);
   demoShow($('demoArrow'), false);
+  demoShow($('demoCard'), false);
   demo.spotEl = null;
   demo.spotEl2 = null;
   demo.spotBox = null;
   demo.spotBox2 = null;
+  demo.spotTag = '';
   demo.lastKey = '';
-  demoShow($('demoSpot'), false);
-  demoShow($('demoRing'), false);
-  demoShow($('demoRing2'), false);
-  demoShow($('demoTag'), false);
-  demoShow($('demoArrow'), false);
   if (demo.ro) { demo.ro.disconnect(); demo.ro = null; demo.roTarget = null; }
   if (demo.ro2) { demo.ro2.disconnect(); demo.ro2 = null; demo.ro2Target = null; }
 }
@@ -3127,15 +3129,30 @@ async function demoLoop(startAt) {
 }
 
 /** 回退/跳转 = 从第 0 步快速重放（不等待），再从目标步正常播 —— 比逐步撤销可靠。 */
+/**
+ * 跳转。
+ *
+ * **前进不重放**：当前界面已经是"步骤 0..demo.i 都跑过"的结果，前进一格或几格时
+ * 只需要补跑中间那几步，没必要从头再来。早期实现是"一律从第 0 步重放"，
+ * 结果点一次「下一步」要重放前面所有步骤 —— 其中第 ⑪ 步光等百度地图就 11 秒，
+ * 体感就是"点了下一步卡住不动"（用户实拍）。
+ * **后退才从头重放**：撤消比重放容易出错（每一步都在改全局状态），这条保持不变。
+ */
 async function demoGoto(target) {
   const t = Math.max(0, Math.min(DEMO_STEPS.length - 1, target));
+  const forward = t > demo.i;
+  const from = forward ? demo.i + 1 : 0;
   const tok = ++demo.token;
   demo.paused = false;
-  demoBar(0, DEMO_STEPS[0]);
-  demoPending(`返回第 ${t + 1} 个环节…`);
+  demoBar(t, DEMO_STEPS[t]);
+  if (from >= t) {                    // 前进一格（或原地）：状态已就绪，直接播
+    demoLoop(t);
+    return;
+  }
+  demoPending(`${forward ? '前往' : '返回'}第 ${t + 1} 个环节…`);
   demo.replaying = true;
   try {
-    for (let i = 0; i < t; i++) {
+    for (let i = from; i < t; i++) {
       if (tok !== demo.token) return;
       try { await DEMO_STEPS[i].run(); } catch (err) { /* 重放失败不影响后续 */ }
     }
@@ -3319,6 +3336,7 @@ function bindDemo() {
     replay: demoReplayStep,
     preview: demoPreviewStep,
     current: () => demo.i + 1,
+    running: () => demo.on,
     side: () => demo.cardSide,
     stepEl: () => demo.spotEl,
     stepTarget: () => (DEMO_STEPS[demo.i] || {}).target || '(无)',

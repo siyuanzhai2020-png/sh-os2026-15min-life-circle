@@ -68,6 +68,22 @@ PROBE_JS = r"""
 """
 
 
+# 退出后残留检查：演示的六层 + 顶部控制条，退出后一个都不该还在显示
+LEFTOVER_JS = r"""
+(() => {
+  const ids = ['demoSpot', 'demoRing', 'demoRing2', 'demoTag', 'demoArrow', 'demoCard', 'demoBar'];
+  const left = [];
+  for (const id of ids) {
+    const e = document.getElementById(id);
+    if (!e || e.hidden) continue;
+    if (!e.getBoundingClientRect().width && !e.getBoundingClientRect().height) continue;
+    left.push(id);
+  }
+  return JSON.stringify(left);
+})()
+"""
+
+
 def find_browser() -> Optional[str]:
     return next((p for p in BROWSERS if Path(p).exists()), None)
 
@@ -284,6 +300,32 @@ async def run(args: argparse.Namespace) -> int:
                         print(f"         目标矩形: {await cdp.js(TARGET_JS)}", flush=True)
                 print(f"逐步自检：{'全部通过 ✔' if not bad else f'{len(bad)} 步有问题 ✘ {bad}'}"
                       f"（12 步共 {time.time() - t_all:.0f}s）", flush=True)
+
+                # 退出之后界面上不许留残留：用户实拍报过"演示结束/中途退出后指向卡不消失"
+                await cdp.js("window.__demo.stop()")
+                await asyncio.sleep(0.4)
+                left = json.loads(await cdp.js(LEFTOVER_JS))
+                print("退出清理：" + ("无残留 ✔" if not left else f"仍在显示 ✘ {left}"), flush=True)
+                if left:
+                    bad.append("退出残留")
+
+                # 前进一格不能重放前置步骤：旧实现点一次「下一步」要重放前面全部步骤，
+                # 第 ⑪ 步光等百度地图就 11 秒，体感是"点了没反应"。
+                await cdp.js("window.__demo.preview(3)")
+                await asyncio.sleep(0.6)
+                t0 = time.time()
+                await cdp.js("window.__demo.goto(4)")
+                jumped = None
+                for _ in range(60):
+                    await asyncio.sleep(0.1)
+                    if await cdp.js("window.__demo.current()") == 5:
+                        jumped = time.time() - t0
+                        break
+                ok_jump = jumped is not None and jumped < 3.0
+                print(f"下一步耗时：{'%.1fs ✔' % jumped if ok_jump else '>6s ✘（在重放前置步骤）'}",
+                      flush=True)
+                if not ok_jump:
+                    bad.append("下一步卡顿")
                 return 0 if not bad else 1
 
             out_dir = ROOT / "out" / "tour"
