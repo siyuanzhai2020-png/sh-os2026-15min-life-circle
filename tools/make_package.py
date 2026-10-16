@@ -42,6 +42,10 @@ EXCLUDE_OUT_SUBDIRS = {"tour"}
 # 仓库根目录的开发便捷脚本不进包：启动演示.cmd 与包内自动生成的那份同名（会打架），
 # 跑检查.cmd 依赖仓库布局，收件人用不上；包里已有自己的启动脚本与快速上手文档。
 EXCLUDE_ROOT_NAMES = {"启动演示.cmd", "跑检查.cmd"}
+
+# 这些根目录文件由本脚本生成后写入包内（仓库里若存在同名文件则跳过，避免 zip 内出现重复条目）
+GENERATED_ROOT_FILES = {"请先读我.html", "README-quickstart-zh.md", "启动演示.cmd",
+                        "start-demo.sh", ".env.local.example"}
 # 缓存里只带演示必需的（离线底图 PNG 等）：OSM 原始抓取缓存只用于重建数据，体积十几 MB，
 # 不值得进包（离线演示读的是 data/*.dataset.json，不碰它）。百度 POI 缓存不大，保留。
 CACHE_EXCLUDE_PREFIX = ("probe-", "osm-")
@@ -321,6 +325,8 @@ def iter_files(root: Path) -> Iterable[Tuple[Path, str]]:
             continue
         if len(rel_parts) == 1 and path.name in EXCLUDE_ROOT_NAMES:
             continue                                  # 仓库根目录的开发便捷脚本
+        if len(rel_parts) == 1 and path.name in GENERATED_ROOT_FILES:
+            continue                                  # 由本脚本生成，避免同名条目重复写入
         rel = "/".join(rel_parts)
         if rel_parts[0] == "out" and len(rel_parts) > 2 and rel_parts[1] in EXCLUDE_OUT_SUBDIRS:
             continue                                  # out/tour/ 演示取景截图（开发期产物）
@@ -330,6 +336,8 @@ def iter_files(root: Path) -> Iterable[Tuple[Path, str]]:
         if (rel_parts[0] == "out" and len(rel_parts) == 2 and EXCLUDE_TOP_LEVEL_OUT_FILES
                 and path.name not in OUT_TOP_LEVEL_KEEP):
             continue                                  # out/ 顶层的开发期截图
+        if rel_parts[:2] == ("data", "cache-diag"):
+            continue                                  # 诊断探针（tools/baidu_diag.py）的原始响应，运行期不需要
         if rel_parts[:2] == ("data", "cache"):
             if path.name.startswith(CACHE_EXCLUDE_PREFIX) or path.name in CACHE_EXCLUDE_NAMES:
                 continue

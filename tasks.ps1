@@ -70,8 +70,10 @@ switch ($Target) {
     $fail = 0
     # 自检另起一个端口，绝不动你可能正在用的 8000（一次疏忽就会把演示服务杀掉）
     $vp = if ($Port -eq 8000) { 8123 } else { $Port }
-    Write-Host "== [1/5] 规范 / 文档内链 / 密钥 自检 ==" -ForegroundColor Cyan
+    Write-Host "== [1/5] 规范 / 文档自检 / 密钥 自检 ==" -ForegroundColor Cyan
     python tools\lint_style.py
+    if ($LASTEXITCODE -ne 0) { $fail = 1 }
+    python tools\check_docs.py
     if ($LASTEXITCODE -ne 0) { $fail = 1 }
     python tools\check_doc_links.py
     if ($LASTEXITCODE -ne 0) { $fail = 1 }
@@ -134,7 +136,7 @@ switch ($Target) {
   "check"   { python tools\check_api.py "http://127.0.0.1:$Port" }
   "pack"    { python tools\make_package.py; python tools\verify_package.py }
   "ak"      { python tools\check_baidu_ak.py }
-  "lint"    { python tools\lint_style.py }
+  "lint"    { python tools\lint_style.py; python tools\check_docs.py }
   default   { throw ("未知目标：$Target（可用：dev / verify / demo / demoall / serve / test / " +
                      "tour / tourcheck / check / pack / lint / ak / help）") }
 }

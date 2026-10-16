@@ -1,6 +1,6 @@
 name: ci
 
-# 只跑"确定不需要外部服务"的两项：代码规范 + 单元测试。
+# 只跑"确定不需要外部服务"的三项：代码规范 + 文档规范 + 单元测试。
 # 刻意不跑 API 自检与演示自检 —— 它们要起本地服务 / 起无头浏览器，
 # 在 CI 里跑得不稳，反而会掩盖真问题（本机 `tasks.ps1 verify` 跑全套）。
 on:
@@ -28,6 +28,8 @@ jobs:
           pip install -r requirements.txt
       - name: 代码规范自检
         run: python tools/lint_style.py
+      - name: 文档规范自检
+        run: python tools/check_docs.py
       - name: 单元测试（离线，用合成数据集）
         run: python -m unittest discover -s tests -v
       - name: 合成社区全链路冒烟（无 AK / 无网络）
